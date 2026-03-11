@@ -1,0 +1,21 @@
+{
+  "routes": [
+    { "path": "/", "screen": "ExecutiveDashboard" },
+    { "path": "/lead-scoring", "screen": "LeadScoringDashboard" },
+    { "path": "/customer-potential", "screen": "CustomerPotentialDashboard" },
+    { "path": "/seasonality", "screen": "SeasonalityDashboard" },
+    { "path": "/forecast", "screen": "DemandForecastDashboard" },
+    { "path": "/container", "screen": "ContainerRecommendationWorkspace" }
+  ],
+  "components": [
+    "AppShell",
+    "ReasonCodeBadge",
+    "MetricCard",
+    "UtilizationBar",
+    "SparseDataWarning"
+  ],
+  "stateModels": {
+    "serverState": "TanStack Query with 5-minute staleTime and explicit invalidation.",
+    "clientState": "Zustand for global drawer/modal states and active filters."
+  }
+}

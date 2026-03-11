@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "endpoints": {
+    "GET /health": {
+      "response": { "status": "ok", "latency": "number" }
+    },
+    "GET /dashboard/summary": {
+      "response": {
+        "activeAlerts": "number",
+        "wmapeCategoryMonth": "number",
+        "avgContainerUtilization": "number"
+      }
+    },
+    "POST /recommend/container": {
+      "request": {
+        "customerId": "string",
+        "skuList": [
+          { "skuId": "string", "quantity": "number" }
+        ]
+      },
+      "response": {
+        "recommendationId": "string",
+        "recommendationType": "SINGLE_CONTAINER | SPLIT_LOAD | MANUAL_REVIEW",
+        "containerType": "20GP | 40HC | null",
+        "utilizationPercent": "number",
+        "reasonCodes": ["string"],
+        "confidenceLabel": "HIGH | MEDIUM | LOW",
+        "sparseDataMode": "boolean"
+      }
+    },
+    "POST /predict/lead-score": {
+      "request": { "leadId": "string", "forecastHorizon": "30_DAYS | 60_DAYS | 90_DAYS" },
+      "response": {
+        "score": "number",
+        "nextBestAction": "string",
+        "topDrivers": ["string"],
+        "reasonCodes": ["string"]
+      }
+    }
+  }
+}
