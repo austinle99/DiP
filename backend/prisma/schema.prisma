@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(ANALYST)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+// ─── Customers ───────────────────────────────────────────────────────────────
+
+model Customer {
+  id           String       @id @default(cuid())
+  externalId   String       @unique @map("external_id") // e.g. "CUST-001"
+  name         String
+  tier         CustomerTier
+  region       String
+  since        Int          // year joined
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  bookings        Booking[]
+  teuRecords      TeuRecord[]
+  containerMixes  ContainerMix[]
+  recommendations Recommendation[]
+
+  @@index([tier])
+  @@index([region])
+  @@map("customers")
+}
+
+enum CustomerTier {
+  TIER_1
+  TIER_2
+  TIER_3
+}
+
+// ─── TEU Records (monthly demand data) ───────────────────────────────────────
+
+model TeuRecord {
+  id          String   @id @default(cuid())
+  customerId  String   @map("customer_id")
+  month       String   // "2026-01" format
+  bookedTeu   Float    @map("booked_teu")
+  forecastTeu Float?   @map("forecast_teu")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, month])
+  @@index([month])
+  @@map("teu_records")
+}
+
+// ─── Container Mix ───────────────────────────────────────────────────────────
+
+model ContainerMix {
+  id         String   @id @default(cuid())
+  customerId String   @map("customer_id")
+  month      String
+  tradeLane  String?  @map("trade_lane")
+  teu20gp    Float    @map("teu_20gp")
+  teu40hc    Float    @map("teu_40hc")
+  teuOther   Float    @map("teu_other")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, month, tradeLane])
+  @@index([month])
+  @@index([tradeLane])
+  @@map("container_mixes")
+}
+
+// ─── Bookings / Shipments ────────────────────────────────────────────────────
+
+model Booking {
+  id          String         @id @default(cuid())
+  shipmentId  String         @unique @map("shipment_id") // e.g. "SHP-10421"
+  customerId  String         @map("customer_id")
+  origin      String
+  destination String
+  status      ShipmentStatus
+  eta         DateTime
+  teu         Float
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([status])
+  @@map("bookings")
+}
+
+enum ShipmentStatus {
+  IN_TRANSIT
+  PENDING
+  DELIVERED
+  DELAYED
+}
+
+// ─── Seasonal Index ──────────────────────────────────────────────────────────
+
+model SeasonalIndex {
+  id        String @id @default(cuid())
+  tradeLane String @map("trade_lane")
+  year      Int
+  quarter   String // "Q1", "Q2", "Q3", "Q4"
+  label     String // "Q1 2026"
+  index     Float  // 0-100
+
+  @@unique([tradeLane, year, quarter])
+  @@map("seasonal_indices")
+}
+
+// ─── AI Recommendations ──────────────────────────────────────────────────────
+
+model Recommendation {
+  id                 String             @id @default(cuid())
+  customerId         String             @map("customer_id")
+  recommendationType RecommendationType @map("recommendation_type")
+  containerType      String?            @map("container_type") // "20GP" | "40HC" | null
+  utilizationPercent Float              @map("utilization_percent")
+  reasonCodes        String[]           @map("reason_codes")
+  confidenceLabel    ConfidenceLabel    @map("confidence_label")
+  sparseDataMode     Boolean            @default(false) @map("sparse_data_mode")
+  skuInput           Json               @map("sku_input") // store the request payload
+  status             RecStatus          @default(PENDING)
+  createdAt          DateTime           @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("recommendations")
+}
+
+enum RecommendationType {
+  SINGLE_CONTAINER
+  SPLIT_LOAD
+  MANUAL_REVIEW
+}
+
+enum ConfidenceLabel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RecStatus {
+  PENDING
+  APPROVED
+  ESCALATED
+}

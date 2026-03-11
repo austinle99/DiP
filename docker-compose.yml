@@ -1,0 +1,124 @@
+services:
+  # ─── Data Layer ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: demand_intel
+      POSTGRES_USER: dip_user
+      POSTGRES_PASSWORD: dip_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dip_user -d demand_intel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── API Gateway (Node.js) ──────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://dip_user:dip_password@db:5432/demand_intel?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-64-chars-minimum}
+      JWT_EXPIRES_IN: 7d
+      PORT: 3001
+      NODE_ENV: production
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX: 100
+      FORECAST_SERVICE_URL: http://forecast:8001
+      OPTIMIZER_SERVICE_URL: http://optimizer:8002
+      ANALYTICS_SERVICE_URL: http://analytics:8003
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── ML Services (Python/FastAPI) ──────────────────────────────────────────
+  forecast:
+    build:
+      context: ./services/forecast
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      FORECAST_REDIS_URL: redis://redis:6379/0
+      FORECAST_PORT: 8001
+      FORECAST_LOG_LEVEL: info
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  optimizer:
+    build:
+      context: ./services/optimizer
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      OPTIMIZER_REDIS_URL: redis://redis:6379/0
+      OPTIMIZER_PORT: 8002
+      OPTIMIZER_SOLVER_TIMEOUT_MS: 5000
+      OPTIMIZER_LOG_LEVEL: info
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  analytics:
+    build:
+      context: ./services/analytics
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      ANALYTICS_REDIS_URL: redis://redis:6379/0
+      ANALYTICS_GATEWAY_URL: http://api:3001/api/internal
+      ANALYTICS_PORT: 8003
+      ANALYTICS_LOG_LEVEL: info
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  redisdata:
