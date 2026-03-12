@@ -1,6 +1,6 @@
 # Demand Intelligence Platform
 
-A full-stack B2B logistics demand forecasting platform with AI-driven demand predictions, customer analytics, and container mix optimization for shipping and logistics operations.
+Demand Intelligence Platform - DiP - A full-stack B2B logistics demand forecasting platform with AI-driven demand predictions, customer analytics, and container mix optimization for shipping and logistics operations.
 
 ## Features
 
