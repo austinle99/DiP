@@ -27,15 +27,86 @@ enum UserRole {
   VIEWER
 }
 
+// ─── Commodities (Mặt hàng) ─────────────────────────────────────────────────
+
+model Commodity {
+  id          String        @id @default(cuid())
+  code        String        @unique // e.g. "GAO", "CA_PHE", "THUY_SAN"
+  name        String        // e.g. "Gạo", "Cà phê", "Thủy sản"
+  category    CommodityCategory
+  description String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  demands            CommodityDemand[]
+  seasonalPatterns   CommoditySeasonalPattern[]
+  containerRequirements ContainerRequirement[]
+
+  @@map("commodities")
+}
+
+enum CommodityCategory {
+  NONG_SAN      // Nông sản (Agricultural)
+  THUY_SAN      // Thủy sản (Seafood)
+  CONG_NGHIEP   // Công nghiệp (Industrial)
+  TIEU_DUNG     // Tiêu dùng (Consumer goods)
+  VAT_LIEU      // Vật liệu (Materials)
+}
+
+// ─── Regions (Vùng miền Việt Nam) ────────────────────────────────────────────
+
+model Region {
+  id          String @id @default(cuid())
+  code        String @unique // "MIEN_BAC", "MIEN_TRUNG", "MIEN_NAM"
+  name        String         // "Miền Bắc", "Miền Trung", "Miền Nam"
+  provinces   String[]       // List of provinces
+  mainPorts   String[]       @map("main_ports") // Main ports in region
+
+  demands    CommodityDemand[]
+  warehouses Warehouse[]
+
+  @@map("regions")
+}
+
+// ─── Warehouses (Kho) ────────────────────────────────────────────────────────
+
+model Warehouse {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  name        String
+  regionId    String        @map("region_id")
+  address     String?
+  type        WarehouseType
+  quality     WarehouseQuality
+  capacity    Float         // TEU capacity
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  region Region @relation(fields: [regionId], references: [id])
+
+  @@index([regionId])
+  @@index([type])
+  @@map("warehouses")
+}
+
+enum WarehouseType {
+  KHO_LANH     // Kho lạnh (Cold storage)
+  KHO_THUONG   // Kho thường (Normal warehouse)
+}
+
+enum WarehouseQuality {
+  CAO_CAP      // Cao cấp (Premium)
+  TIEU_CHUAN   // Tiêu chuẩn (Standard)
+}
+
 // ─── Customers ───────────────────────────────────────────────────────────────
 
 model Customer {
   id           String       @id @default(cuid())
-  externalId   String       @unique @map("external_id") // e.g. "CUST-001"
+  externalId   String       @unique @map("external_id")
   name         String
   tier         CustomerTier
-  region       String
-  since        Int          // year joined
+  regionId     String?      @map("region_id")
+  since        Int
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
@@ -45,7 +116,7 @@ model Customer {
   recommendations Recommendation[]
 
   @@index([tier])
-  @@index([region])
+  @@index([regionId])
   @@map("customers")
 }
 
@@ -53,6 +124,105 @@ enum CustomerTier {
   TIER_1
   TIER_2
   TIER_3
+}
+
+// ─── Commodity Demand (Sản lượng theo mặt hàng + vùng miền + tháng) ─────────
+
+model CommodityDemand {
+  id           String   @id @default(cuid())
+  commodityId  String   @map("commodity_id")
+  regionId     String   @map("region_id")
+  month        String   // "2026-03" format
+  volumeTeu    Float    @map("volume_teu")
+  forecastTeu  Float?   @map("forecast_teu")
+  weightTon    Float?   @map("weight_ton")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  commodity Commodity @relation(fields: [commodityId], references: [id], onDelete: Cascade)
+  region    Region    @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@unique([commodityId, regionId, month])
+  @@index([month])
+  @@index([commodityId])
+  @@index([regionId])
+  @@map("commodity_demands")
+}
+
+// ─── Commodity Seasonal Pattern (Mùa vụ) ────────────────────────────────────
+
+model CommoditySeasonalPattern {
+  id          String @id @default(cuid())
+  commodityId String @map("commodity_id")
+  month       Int    // 1-12
+  index       Float  // 0-100, demand intensity
+  label       String // "Tháng 1", "Tháng 2", etc.
+
+  commodity Commodity @relation(fields: [commodityId], references: [id], onDelete: Cascade)
+
+  @@unique([commodityId, month])
+  @@map("commodity_seasonal_patterns")
+}
+
+// ─── Container Requirements (Yêu cầu container theo mặt hàng) ───────────────
+
+model ContainerRequirement {
+  id             String           @id @default(cuid())
+  commodityId    String           @map("commodity_id")
+  containerType  ContainerKind    @map("container_type")
+  qualityGrade   ContainerQuality @map("quality_grade")
+  temperatureMin Float?           @map("temperature_min")
+  temperatureMax Float?           @map("temperature_max")
+  notes          String?
+
+  commodity Commodity @relation(fields: [commodityId], references: [id], onDelete: Cascade)
+
+  @@index([commodityId])
+  @@map("container_requirements")
+}
+
+enum ContainerKind {
+  DRY_20GP
+  DRY_40HC
+  REEFER_20
+  REEFER_40
+  OPEN_TOP
+  FLAT_RACK
+}
+
+enum ContainerQuality {
+  GRADE_A    // Container mới / chất lượng cao
+  GRADE_B    // Container tiêu chuẩn
+  GRADE_C    // Container cũ / giá rẻ
+}
+
+// ─── Vehicles (Phương tiện) ──────────────────────────────────────────────────
+
+model Vehicle {
+  id         String      @id @default(cuid())
+  code       String      @unique
+  name       String
+  type       VehicleType
+  capacity   Float       // TEU capacity
+  regionId   String?     @map("region_id")
+  status     VehicleStatus @default(AVAILABLE)
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@index([type])
+  @@index([status])
+  @@map("vehicles")
+}
+
+enum VehicleType {
+  XE_DAU_KEO     // Xe đầu kéo (Truck/Tractor)
+  XE_TAI         // Xe tải (Truck)
+  TAU_BIEN       // Tàu biển (Ship)
+  XA_LAN         // Xà lan (Barge)
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
 }
 
 // ─── TEU Records (monthly demand data) ───────────────────────────────────────
@@ -96,7 +266,7 @@ model ContainerMix {
 
 model Booking {
   id          String         @id @default(cuid())
-  shipmentId  String         @unique @map("shipment_id") // e.g. "SHP-10421"
+  shipmentId  String         @unique @map("shipment_id")
   customerId  String         @map("customer_id")
   origin      String
   destination String
@@ -140,12 +310,12 @@ model Recommendation {
   id                 String             @id @default(cuid())
   customerId         String             @map("customer_id")
   recommendationType RecommendationType @map("recommendation_type")
-  containerType      String?            @map("container_type") // "20GP" | "40HC" | null
+  containerType      String?            @map("container_type")
   utilizationPercent Float              @map("utilization_percent")
   reasonCodes        String[]           @map("reason_codes")
   confidenceLabel    ConfidenceLabel    @map("confidence_label")
   sparseDataMode     Boolean            @default(false) @map("sparse_data_mode")
-  skuInput           Json               @map("sku_input") // store the request payload
+  skuInput           Json               @map("sku_input")
   status             RecStatus          @default(PENDING)
   createdAt          DateTime           @default(now()) @map("created_at")
 

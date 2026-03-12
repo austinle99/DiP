@@ -82,7 +82,7 @@ export async function getPortfolioOverview() {
 
   // Map peaks to customer data
   const allCustomers = await prisma.customer.findMany({
-    select: { externalId: true, name: true, region: true },
+    select: { externalId: true, name: true, regionId: true },
     take: 5,
   });
   const upcomingPeaks = upcomingPeaksRaw.map((p, i) => {
@@ -92,7 +92,7 @@ export async function getPortfolioOverview() {
       customerName: cust?.name ?? 'Unknown',
       peakMonth: p.label,
       expectedTeu: Math.round(p.index * 50),
-      region: cust?.region ?? p.tradeLane,
+      region: cust?.regionId ?? p.tradeLane,
     };
   });
 

@@ -1,16 +1,16 @@
 import type {
-  PortfolioOverview,
+  CommodityDashboard,
+  CommodityDetail,
   CustomerSummary,
-  CustomerDetail,
   ContainerMixFilters,
   ContainerMixData,
   ContainerRecommendationRequest,
   ContainerRecommendationResponse,
 } from './contract';
 import {
-  mockGetPortfolioOverview,
+  mockGetCommodityDashboard,
+  mockGetCommodityDetail,
   mockGetCustomers,
-  mockGetCustomerDetail,
   mockGetContainerMix,
   mockRecommendContainer,
 } from '../mocks/handlers';
@@ -41,11 +41,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-// ─── Portfolio ───────────────────────────────────────────────────────────────
+// ─── Commodity Dashboard ────────────────────────────────────────────────────
 
-export async function getPortfolioOverview(): Promise<PortfolioOverview> {
-  if (USE_MOCKS) return mockGetPortfolioOverview();
-  return apiFetch('/portfolio/overview');
+export async function getCommodityDashboard(): Promise<CommodityDashboard> {
+  if (USE_MOCKS) return mockGetCommodityDashboard();
+  return apiFetch('/commodity/dashboard');
+}
+
+export async function getCommodityDetail(commodityCode: string): Promise<CommodityDetail> {
+  if (USE_MOCKS) return mockGetCommodityDetail(commodityCode);
+  return apiFetch(`/commodity/${commodityCode}`);
 }
 
 // ─── Customers ───────────────────────────────────────────────────────────────
@@ -55,18 +60,14 @@ export async function getCustomers(): Promise<CustomerSummary[]> {
   return apiFetch('/customers');
 }
 
-export async function getCustomerDetail(customerId: string): Promise<CustomerDetail> {
-  if (USE_MOCKS) return mockGetCustomerDetail(customerId);
-  return apiFetch(`/customers/${customerId}`);
-}
-
 // ─── Containers ──────────────────────────────────────────────────────────────
 
 export async function getContainerMix(filters: ContainerMixFilters): Promise<ContainerMixData> {
   if (USE_MOCKS) return mockGetContainerMix(filters);
   const params = new URLSearchParams();
   if (filters.customerId) params.set('customerId', filters.customerId);
-  if (filters.tradeLane) params.set('tradeLane', filters.tradeLane);
+  if (filters.commodityCode) params.set('commodityCode', filters.commodityCode);
+  if (filters.regionCode) params.set('regionCode', filters.regionCode);
   if (filters.year) params.set('year', String(filters.year));
   return apiFetch(`/containers/mix?${params}`);
 }

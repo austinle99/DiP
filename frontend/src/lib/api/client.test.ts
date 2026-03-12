@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { getPortfolioOverview, getCustomers } from './client';
+import { getCommodityDashboard, getCustomers } from './client';
 
 describe('API client (mock)', () => {
-  it('returns portfolio overview data', async () => {
-    const data = await getPortfolioOverview();
+  it('returns commodity dashboard data', async () => {
+    const data = await getCommodityDashboard();
     expect(data).toBeDefined();
-    expect(data.totalTeu12m).toBeDefined();
-    expect(data.monthlyTeu.length).toBeGreaterThan(0);
+    expect(data.kpi.totalVolumeTeu).toBeDefined();
+    expect(data.commodityRankings.length).toBeGreaterThan(0);
   });
 
   it('returns a list of customers', async () => {

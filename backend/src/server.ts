@@ -8,6 +8,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import healthRouter from './routes/health.js';
 import authRouter from './routes/auth.js';
 import portfolioRouter from './routes/portfolio.js';
+import commodityRouter from './routes/commodity.js';
 import customersRouter from './routes/customers.js';
 import containersRouter from './routes/containers.js';
 import recommendRouter from './routes/recommend.js';
@@ -37,6 +38,7 @@ app.use(
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/portfolio', portfolioRouter);
+app.use('/api/commodity', commodityRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/containers', containersRouter);
 app.use('/api/recommend', recommendRouter);

@@ -1,16 +1,17 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutGrid, Users, Box, FileText, Settings } from 'lucide-react';
+import { Package, TrendingUp, MapPin, Box, Users, Settings } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navItems = [
-  { label: 'ANALYTICS', items: [
-    { to: '/', icon: LayoutGrid, label: 'DASHBOARD' },
-    { to: '/customers', icon: Users, label: 'CUSTOMERS' },
-    { to: '/containers', icon: Box, label: 'CONTAINERS' },
+  { label: 'PHÂN TÍCH', items: [
+    { to: '/', icon: Package, label: 'SẢN LƯỢNG' },
+    { to: '/trends', icon: TrendingUp, label: 'XU HƯỚNG' },
+    { to: '/regions', icon: MapPin, label: 'VÙNG MIỀN' },
+    { to: '/containers', icon: Box, label: 'CONTAINER' },
   ]},
-  { label: 'MANAGEMENT', items: [
-    { to: '/reports', icon: FileText, label: 'REPORTS' },
-    { to: '/settings', icon: Settings, label: 'SETTINGS' },
+  { label: 'QUẢN LÝ', items: [
+    { to: '/customers', icon: Users, label: 'KHÁCH HÀNG' },
+    { to: '/settings', icon: Settings, label: 'CÀI ĐẶT' },
   ]},
 ];
 

@@ -11,12 +11,35 @@ export async function getCustomers() {
     orderBy: { name: 'asc' },
   });
 
+  // Resolve region names
+  const regions = await prisma.region.findMany({ select: { id: true, name: true } });
+  const regionNameMap = new Map(regions.map((r) => [r.id, r.name]));
+
+  // Get top commodity per region from demand data
+  const regionCommodities = await prisma.commodityDemand.groupBy({
+    by: ['regionId', 'commodityId'],
+    _sum: { volumeTeu: true },
+    orderBy: { _sum: { volumeTeu: 'desc' } },
+  });
+
+  const commodities = await prisma.commodity.findMany({ select: { id: true, name: true } });
+  const commodityNameMap = new Map(commodities.map((c) => [c.id, c.name]));
+
+  // First occurrence per region = highest volume commodity
+  const regionTopCommodity = new Map<string, string>();
+  for (const rc of regionCommodities) {
+    if (!regionTopCommodity.has(rc.regionId)) {
+      regionTopCommodity.set(rc.regionId, commodityNameMap.get(rc.commodityId) ?? '—');
+    }
+  }
+
   return customers.map((c) => ({
     customerId: c.externalId,
     customerName: c.name,
     tier: tierMap[c.tier],
-    region: c.region,
+    region: c.regionId ? (regionNameMap.get(c.regionId) ?? '—') : '—',
     totalTeu: Math.round(c.teuRecords.reduce((sum, r) => sum + r.bookedTeu, 0)),
+    topCommodity: c.regionId ? (regionTopCommodity.get(c.regionId) ?? '—') : '—',
   }));
 }
 
@@ -32,6 +55,16 @@ export async function getCustomerDetail(externalId: string) {
 
   if (!customer) throw AppError.notFound('Customer');
 
+  // Resolve region name
+  let regionName = '—';
+  if (customer.regionId) {
+    const region = await prisma.region.findUnique({
+      where: { id: customer.regionId },
+      select: { name: true },
+    });
+    regionName = region?.name ?? '—';
+  }
+
   const totalTeu = customer.teuRecords.reduce((s, r) => s + r.bookedTeu, 0);
   const shipmentsYtd = customer.bookings.length;
   const delivered = customer.bookings.filter((b) => b.status === 'DELIVERED');
@@ -42,7 +75,7 @@ export async function getCustomerDetail(externalId: string) {
     customerId: customer.externalId,
     customerName: customer.name,
     tier: tierMap[customer.tier],
-    region: customer.region,
+    region: regionName,
     since: customer.since,
     lifetimeValue: Math.round(totalTeu * 580),
     lifetimeValueChange: 12.4,
