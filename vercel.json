@@ -4,12 +4,6 @@
   "installCommand": "npm install --prefix backend && npx prisma generate --schema=backend/prisma/schema.prisma && npm install --prefix frontend",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30,
-      "includeFiles": "backend/**"
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
