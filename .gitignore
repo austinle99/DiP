@@ -35,5 +35,9 @@ pnpm-debug.log*
 # Test coverage
 coverage/
 
+# Vercel serverless (re-enable when self-hosting)
+_api/
+.vercelignore
+
 # Misc
 *.pen
